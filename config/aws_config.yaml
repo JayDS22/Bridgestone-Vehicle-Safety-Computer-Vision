@@ -1,0 +1,240 @@
+# AWS Configuration for Bridgestone Vehicle Safety System
+
+# AWS General Settings
+aws:
+  region: "us-east-1"
+  profile: "default"  # AWS CLI profile to use
+  
+# S3 Configuration
+s3:
+  bucket_name: "bridgestone-vehicle-safety"
+  model_prefix: "models/"
+  data_prefix: "data/"
+  results_prefix: "results/"
+  logs_prefix: "logs/"
+  
+  # Bucket policies
+  versioning_enabled: true
+  encryption_enabled: true
+  lifecycle_rules:
+    - name: "delete_old_logs"
+      prefix: "logs/"
+      expiration_days: 90
+    - name: "archive_old_data" 
+      prefix: "data/raw/"
+      transition_to_ia_days: 30
+      transition_to_glacier_days: 90
+
+# Lambda Configuration
+lambda:
+  function_name: "vehicle-safety-inference"
+  runtime: "python3.9"
+  timeout: 900  # 15 minutes
+  memory_size: 3008  # MB
+  
+  # Environment variables
+  environment:
+    MODEL_BUCKET: "bridgestone-vehicle-safety"
+    LOG_LEVEL: "INFO"
+    PYTORCH_LAMBDA_LAYER: "arn:aws:lambda:us-east-1:123456789012:layer:pytorch"
+  
+  # VPC Configuration (optional)
+  vpc_config:
+    subnet_ids: []
+    security_group_ids: []
+
+# API Gateway Configuration
+api_gateway:
+  api_name: "vehicle-safety-api"
+  stage_name: "prod"
+  throttle_rate_limit: 1000
+  throttle_burst_limit: 2000
+  
+  # CORS settings
+  cors:
+    allow_origins: ["*"]
+    allow_methods: ["GET", "POST", "OPTIONS"]
+    allow_headers: ["Content-Type", "Authorization"]
+
+# ECS Configuration for API deployment
+ecs:
+  cluster_name: "vehicle-safety-cluster"
+  service_name: "vehicle-safety-service"
+  task_definition_family: "vehicle-safety-task"
+  
+  # Container configuration
+  container:
+    name: "vehicle-safety-api"
+    image: "bridgestone/vehicle-safety:latest"
+    cpu: 2048  # CPU units
+    memory: 4096  # MB
+    port: 8000
+  
+  # Auto scaling
+  auto_scaling:
+    min_capacity: 2
+    max_capacity: 10
+    target_cpu_utilization: 70
+
+# RDS Configuration for metadata storage
+rds:
+  instance_identifier: "vehicle-safety-db"
+  engine: "postgres"
+  engine_version: "13.7"
+  instance_class: "db.t3.medium"
+  allocated_storage: 100  # GB
+  
+  database_name: "vehicle_safety"
+  username: "bridgestone_user"
+  
+  # Security
+  vpc_security_group_ids: []
+  subnet_group_name: "vehicle-safety-subnet-group"
+  backup_retention_period: 7
+  multi_az: true
+  encrypted: true
+
+# ElastiCache Redis Configuration
+elasticache:
+  cluster_id: "vehicle-safety-cache"
+  node_type: "cache.t3.medium"
+  num_cache_nodes: 1
+  engine_version: "6.2"
+  port: 6379
+  
+  # Security
+  subnet_group_name: "vehicle-safety-cache-subnet-group"
+  security_group_ids: []
+
+# CloudWatch Configuration
+cloudwatch:
+  log_group_name: "/aws/lambda/vehicle-safety-inference"
+  log_retention_days: 30
+  
+  # Custom metrics
+  custom_metrics:
+    - metric_name: "InferenceTime"
+      namespace: "VehicleSafety/Performance"
+      unit: "Milliseconds"
+    - metric_name: "DetectionCount"
+      namespace: "VehicleSafety/Business"
+      unit: "Count"
+    - metric_name: "RiskScore"
+      namespace: "VehicleSafety/Business"
+      unit: "None"
+
+# CloudFormation Stack Configuration
+cloudformation:
+  stack_name: "vehicle-safety-infrastructure"
+  template_url: "https://s3.amazonaws.com/bridgestone-cf-templates/vehicle-safety.yaml"
+  
+  # Parameters
+  parameters:
+    Environment: "production"
+    InstanceType: "t3.large"
+    KeyPairName: "vehicle-safety-keypair"
+
+# IAM Roles and Policies
+iam:
+  lambda_execution_role: "vehicle-safety-lambda-role"
+  ecs_task_role: "vehicle-safety-ecs-task-role"
+  ecs_execution_role: "vehicle-safety-ecs-execution-role"
+  
+  # Policies
+  policies:
+    - name: "VehicleSafetyS3Access"
+      actions:
+        - "s3:GetObject"
+        - "s3:PutObject"
+        - "s3:DeleteObject"
+      resources:
+        - "arn:aws:s3:::bridgestone-vehicle-safety/*"
+    
+    - name: "VehicleSafetyLogsAccess"
+      actions:
+        - "logs:CreateLogGroup"
+        - "logs:CreateLogStream"
+        - "logs:PutLogEvents"
+      resources:
+        - "arn:aws:logs:*:*:*"
+
+# Security Configuration
+security:
+  # KMS for encryption
+  kms_key_id: "alias/vehicle-safety-key"
+  
+  # Secrets Manager
+  secrets:
+    database_credentials: "vehicle-safety/db-credentials"
+    api_keys: "vehicle-safety/api-keys"
+  
+  # WAF rules
+  waf_rules:
+    - name: "RateLimitRule"
+      priority: 1
+      rate_limit: 2000
+    - name: "GeoBlockRule"
+      priority: 2
+      blocked_countries: ["CN", "RU"]
+
+# Cost Optimization
+cost_optimization:
+  # Reserved instances
+  reserved_instances:
+    - instance_type: "t3.large"
+      count: 2
+      term: "1yr"
+  
+  # Spot instances for batch processing
+  spot_instances:
+    - instance_type: "c5.2xlarge"
+      max_price: "0.10"
+  
+  # S3 storage classes
+  s3_intelligent_tiering: true
+  s3_transfer_acceleration: false
+
+# Monitoring and Alerting
+monitoring:
+  # SNS topics for alerts
+  sns_topics:
+    - name: "vehicle-safety-alerts"
+      email_endpoints:
+        - "devops@bridgestone.com"
+        - "ml-team@bridgestone.com"
+  
+  # CloudWatch alarms
+  alarms:
+    - name: "HighInferenceTime"
+      metric: "InferenceTime"
+      threshold: 200
+      comparison: "GreaterThanThreshold"
+      period: 300
+    
+    - name: "HighErrorRate"
+      metric: "ErrorRate"
+      threshold: 5
+      comparison: "GreaterThanThreshold"
+      period: 300
+
+# Backup and Disaster Recovery
+backup:
+  # RDS automated backups
+  rds_backup_retention: 7
+  
+  # S3 cross-region replication
+  s3_replication:
+    destination_bucket: "bridgestone-vehicle-safety-backup"
+    destination_region: "us-west-2"
+  
+  # Lambda function backup
+  lambda_backup_schedule: "rate(1 day)"
+
+# Tags (applied to all resources)
+tags:
+  Project: "BridgestoneVehicleSafety"
+  Environment: "Production"
+  Team: "ML-Engineering"
+  CostCenter: "R&D"
+  Owner: "ai-team@bridgestone.com"
+  Compliance: "Required"
