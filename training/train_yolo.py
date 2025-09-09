@@ -1,4 +1,3 @@
-
 """
 YOLOv7 training script for vehicle detection
 Custom training pipeline for Bridgestone vehicle safety dataset
