@@ -1,0 +1,175 @@
+version: '3.8'
+
+services:
+  # Main API service
+  api:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+      target: production
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=info
+      - MODEL_PATH=/app/data/models
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ../data/models:/app/data/models:ro
+      - ../logs:/app/logs
+      - api_results:/app/results
+    networks:
+      - bridgestone_network
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis for caching and session storage
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - bridgestone_network
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+
+  # PostgreSQL for metadata and results storage
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=bridgestone_safety
+      - POSTGRES_USER=bridgestone
+      - POSTGRES_PASSWORD=safety_2024
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    networks:
+      - bridgestone_network
+    restart: unless-stopped
+
+  # Monitoring with Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - bridgestone_network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin_2024
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - bridgestone_network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  # Load balancer (Nginx)
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    networks:
+      - bridgestone_network
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # Development service (optional)
+  api-dev:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+      target: development
+    ports:
+      - "8001:8000"
+    environment:
+      - ENVIRONMENT=development
+      - LOG_LEVEL=debug
+    volumes:
+      - ..:/app
+      - ../data/models:/app/data/models
+    networks:
+      - bridgestone_network
+    profiles:
+      - dev
+
+  # Worker service for background processing
+  worker:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+      target: production
+    environment:
+      - ENVIRONMENT=production
+      - WORKER_MODE=true
+    volumes:
+      - ../data:/app/data
+      - ../logs:/app/logs
+      - worker_results:/app/results
+    networks:
+      - bridgestone_network
+    command: ["python", "src/workers/video_processor.py"]
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 3G
+          cpus: '1.5'
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - postgres
+
+networks:
+  bridgestone_network:
+    driver: bridge
+
+volumes:
+  api_results:
+  worker_results:
+  redis_data:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
