@@ -1,0 +1,187 @@
+# Bridgestone Vehicle Safety System Configuration
+# Production-ready configuration for all model components
+
+# YOLOv7 Object Detection Configuration
+yolo:
+  model_path: "data/models/yolov7_vehicle.pt"
+  confidence_threshold: 0.5
+  iou_threshold: 0.45
+  input_size: [640, 640]
+  device: "auto"  # auto, cpu, cuda
+  classes:
+    - car
+    - truck
+    - bus
+    - motorcycle
+    - bicycle
+    - person
+    - traffic_light
+    - stop_sign
+
+# Feature Extraction Configuration
+feature_extraction:
+  device: "auto"
+  max_history_frames: 10
+  features:
+    cnn_features: 9      # Deep CNN features (statistical summary)
+    motion_features: 14   # Optical flow, background subtraction
+    texture_features: 10  # LBP, GLCM, edge features
+    spatial_features: 15  # Object relationships, positions
+    temporal_features: 7  # Object persistence, trends
+    environmental_features: 10  # Lighting, weather
+    detection_features: 7 # Confidence, box quality
+  total_features: 72
+
+# Ensemble Model Configuration
+ensemble_model:
+  model_weights:
+    random_forest: 0.3
+    xgboost: 0.4
+    neural_network: 0.3
+  
+  random_forest:
+    n_estimators: 200
+    max_depth: 15
+    min_samples_split: 5
+    min_samples_leaf: 2
+    max_features: "sqrt"
+    bootstrap: true
+    class_weight: "balanced"
+    n_jobs: -1
+  
+  xgboost:
+    n_estimators: 300
+    max_depth: 8
+    learning_rate: 0.1
+    subsample: 0.8
+    colsample_bytree: 0.8
+    gamma: 0.1
+    reg_alpha: 0.1
+    reg_lambda: 0.1
+    scale_pos_weight: 1
+    eval_metric: "logloss"
+    n_jobs: -1
+  
+  neural_network:
+    hidden_dims: [256, 128, 64, 32]
+    dropout_rate: 0.3
+    batch_norm: true
+    activation: "relu"
+
+# Survival Analysis Configuration
+survival_analysis:
+  penalizer: 0.01
+  l1_ratio: 0.1
+  alpha_level: 0.05
+  time_horizons: [1, 3, 6, 12, 24, 36]  # months
+  risk_thresholds:
+    low: 0.33
+    medium: 0.67
+    high: 1.0
+
+# Training Configuration
+training:
+  # Data
+  validation_split: 0.2
+  test_split: 0.1
+  random_state: 42
+  
+  # Neural Network Training
+  epochs: 100
+  batch_size: 256
+  learning_rate: 0.001
+  weight_decay: 1e-5
+  early_stopping_patience: 10
+  
+  # Cross-validation
+  cv_folds: 5
+  
+  # Performance Targets
+  target_auc: 0.85
+  target_accuracy: 0.85
+  target_precision: 0.80
+  target_recall: 0.80
+
+# Performance Monitoring
+performance:
+  # Inference Time Targets
+  max_inference_time_ms: 150
+  target_throughput_rps: 1000
+  
+  # Resource Limits
+  max_memory_gb: 4
+  max_cpu_percent: 70
+  
+  # Alert Thresholds
+  alert_thresholds:
+    inference_time_ms: 200
+    memory_percent: 85
+    cpu_percent: 80
+    error_rate: 0.05
+    throughput_rps: 500
+
+# API Configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  timeout: 30
+  max_request_size: 10485760  # 10MB
+  
+  # CORS
+  cors_origins: ["*"]
+  cors_methods: ["GET", "POST"]
+  cors_headers: ["*"]
+  
+  # Rate Limiting
+  rate_limit:
+    requests_per_minute: 1000
+    burst_size: 100
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file_rotation: "midnight"
+  retention_days: 30
+  
+  loggers:
+    api: "INFO"
+    models: "INFO"
+    training: "INFO"
+    monitoring: "INFO"
+
+# Model Versioning
+model_versions:
+  yolo: "7.0"
+  ensemble: "2.1.0"
+  survival: "1.0.0"
+  api: "2.1.0"
+
+# Business Metrics
+business_impact:
+  # Cost per crash (USD)
+  average_crash_cost: 1670000
+  
+  # Prevention targets
+  target_crash_prevention: 13400
+  target_cost_savings: 122900000  # $122.9M
+  
+  # Population scale
+  target_vehicle_coverage: 300000
+
+# Data Paths
+data_paths:
+  models: "data/models/"
+  raw_data: "data/raw/"
+  processed_data: "data/processed/"
+  results: "results/"
+  logs: "logs/"
+
+# Model Files
+model_files:
+  yolo_weights: "yolov7_vehicle.pt"
+  ensemble_model: "ensemble_model.pkl"
+  survival_model: "survival_model.pkl"
+  feature_scaler: "feature_scaler.pkl"
+  label_encoder: "label_encoder.pkl"
