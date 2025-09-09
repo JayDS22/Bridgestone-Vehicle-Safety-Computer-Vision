@@ -1,1 +1,358 @@
 
+# Training Configuration for Bridgestone Vehicle Safety Models
+
+# Data Configuration
+data:
+  # Dataset paths
+  train_data_path: "data/processed/train_features.csv"
+  val_data_path: "data/processed/val_features.csv" 
+  test_data_path: "data/processed/test_features.csv"
+  crash_data_path: "data/raw/crash_records_7_8M.csv"
+  
+  # Data splits
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
+  
+  # Sampling for development
+  sample_for_dev: true
+  dev_sample_size: 10000
+  
+  # Target columns
+  risk_target_column: "risk_label"
+  survival_duration_column: "time_to_crash"
+  survival_event_column: "crash_occurred"
+
+# YOLOv7 Training Configuration
+yolo_training:
+  # Model configuration
+  model_size: "yolov7"  # yolov7, yolov7x, yolov7-w6
+  input_size: [640, 640]
+  
+  # Training parameters
+  epochs: 300
+  batch_size: 16
+  learning_rate: 0.01
+  momentum: 0.937
+  weight_decay: 0.0005
+  
+  # Data augmentation
+  mosaic_prob: 1.0
+  mixup_prob: 0.15
+  copy_paste_prob: 0.3
+  
+  # Validation
+  val_interval: 10
+  save_best_only: true
+  
+  # Hardware
+  device: "auto"  # auto, cpu, cuda, 0, 1, 2, 3
+  workers: 8
+  
+  # Paths
+  pretrained_weights: "yolov7.pt"
+  output_dir: "runs/train/yolo"
+
+# Ensemble Model Training Configuration  
+ensemble_training:
+  # Model weights
+  model_weights:
+    random_forest: 0.3
+    xgboost: 0.4
+    neural_network: 0.3
+  
+  # Random Forest
+  random_forest:
+    n_estimators: 200
+    max_depth: 15
+    min_samples_split: 5
+    min_samples_leaf: 2
+    max_features: "sqrt"
+    bootstrap: true
+    class_weight: "balanced"
+    n_jobs: -1
+    random_state: 42
+  
+  # XGBoost
+  xgboost:
+    n_estimators: 300
+    max_depth: 8
+    learning_rate: 0.1
+    subsample: 0.8
+    colsample_bytree: 0.8
+    gamma: 0.1
+    reg_alpha: 0.1
+    reg_lambda: 0.1
+    scale_pos_weight: 1
+    random_state: 42
+    n_jobs: -1
+    early_stopping_rounds: 50
+  
+  # Neural Network
+  neural_network:
+    hidden_dims: [256, 128, 64, 32]
+    dropout_rate: 0.3
+    batch_norm: true
+    activation: "relu"
+    
+    # Training parameters
+    epochs: 100
+    batch_size: 256
+    learning_rate: 0.001
+    weight_decay: 1e-5
+    early_stopping_patience: 10
+    
+    # Optimizer
+    optimizer: "adam"
+    scheduler: "reduce_on_plateau"
+    scheduler_patience: 5
+    scheduler_factor: 0.5
+  
+  # Cross-validation
+  cv_folds: 5
+  stratified_cv: true
+  
+  # Feature selection
+  feature_selection: true
+  feature_selection_method: "f_classif"
+  num_features_to_select: "auto"  # or integer
+
+# Survival Analysis Training Configuration
+survival_training:
+  # Cox Proportional Hazards
+  cox_model:
+    penalizer: 0.01
+    l1_ratio: 0.1
+    alpha: 0.05
+    max_iter: 1000
+    
+  # Data preprocessing
+  time_horizon_months: [1, 3, 6, 12, 24, 36]
+  min_survival_time: 0.1  # months
+  max_survival_time: 60   # months
+  
+  # Feature engineering
+  temporal_features: true
+  weather_features: true
+  road_condition_features: true
+  
+  # Validation
+  validation_method: "time_series_split"
+  n_splits: 5
+
+# Training Infrastructure
+infrastructure:
+  # Compute resources
+  gpu_enabled: true
+  gpu_memory_limit: 8192  # MB
+  cpu_cores: 8
+  memory_limit: 32768     # MB
+  
+  # Distributed training
+  distributed: false
+  world_size: 1
+  rank: 0
+  
+  # Mixed precision
+  mixed_precision: true
+  
+  # Checkpointing
+  checkpoint_frequency: 10  # epochs
+  save_top_k: 3
+  
+  # Monitoring
+  log_frequency: 100  # steps
+  wandb_enabled: false
+  mlflow_enabled: true
+  tensorboard_enabled: true
+
+# Hyperparameter Optimization
+hyperparameter_optimization:
+  enabled: false
+  framework: "optuna"  # optuna, hyperopt, ray_tune
+  
+  # Search space
+  search_space:
+    # XGBoost
+    xgb_n_estimators: [100, 500]
+    xgb_max_depth: [3, 15]
+    xgb_learning_rate: [0.01, 0.3]
+    
+    # Neural Network
+    nn_hidden_dims: [[128, 64], [256, 128, 64], [512, 256, 128, 64]]
+    nn_dropout: [0.1, 0.5]
+    nn_learning_rate: [1e-4, 1e-2]
+  
+  # Optimization
+  n_trials: 100
+  timeout: 7200  # seconds
+  
+  # Pruning
+  pruner: "median"
+  n_startup_trials: 10
+  n_warmup_steps: 5
+
+# Performance Targets and Evaluation
+evaluation:
+  # Performance targets
+  target_metrics:
+    ensemble_auc: 0.85
+    ensemble_accuracy: 0.85
+    ensemble_precision: 0.80
+    ensemble_recall: 0.80
+    survival_c_index: 0.75
+    yolo_map50: 0.60
+    yolo_precision: 0.80
+    yolo_recall: 0.75
+  
+  # Evaluation frequency
+  val_frequency: 1  # epochs
+  test_evaluation: true
+  
+  # Early stopping
+  early_stopping:
+    monitor: "val_auc"
+    patience: 20
+    mode: "max"
+    min_delta: 0.001
+  
+  # Model selection
+  model_selection_metric: "val_auc"
+  
+  # Business metrics evaluation
+  business_evaluation:
+    crash_cost_usd: 1670000
+    target_crash_prevention: 13400
+    roi_calculation: true
+
+# Data Augmentation for Training
+augmentation:
+  # Image augmentation
+  image_augmentation:
+    enabled: true
+    augmentation_probability: 0.8
+    
+    # Geometric
+    horizontal_flip: 0.5
+    rotation_limit: 5
+    scale_limit: 0.1
+    shift_limit: 0.1
+    
+    # Color
+    brightness_limit: 0.2
+    contrast_limit: 0.2
+    saturation_limit: 0.2
+    hue_shift_limit: 10
+    
+    # Weather effects
+    weather_augmentation: 0.3
+    rain_probability: 0.1
+    fog_probability: 0.1
+    snow_probability: 0.05
+  
+  # Temporal augmentation
+  temporal_augmentation:
+    enabled: true
+    speed_variation: 0.2
+    frame_dropout: 0.1
+    temporal_jitter: 0.15
+  
+  # Synthetic data generation
+  synthetic_data:
+    enabled: false
+    generation_ratio: 0.1
+    scenario_types: ["normal_traffic", "congestion", "intersection"]
+
+# Experiment Tracking
+experiment_tracking:
+  # MLflow
+  mlflow:
+    tracking_uri: "sqlite:///mlflow.db"
+    experiment_name: "bridgestone_vehicle_safety"
+    run_name_template: "{model_type}_{timestamp}"
+    
+    # Artifacts to log
+    log_models: true
+    log_feature_importance: true
+    log_confusion_matrix: true
+    log_training_curves: true
+  
+  # Weights & Biases
+  wandb:
+    project: "bridgestone-vehicle-safety"
+    entity: "bridgestone-ai"
+    tags: ["vehicle_safety", "production"]
+  
+  # Metadata to track
+  metadata:
+    git_commit: true
+    environment_info: true
+    dataset_hash: true
+    config_hash: true
+
+# Model Deployment Preparation
+deployment_prep:
+  # Model optimization
+  model_optimization:
+    quantization: false
+    pruning: false
+    distillation: false
+    onnx_export: true
+  
+  # Performance testing
+  performance_testing:
+    inference_time_test: true
+    throughput_test: true
+    memory_usage_test: true
+    target_inference_time_ms: 150
+    target_throughput_rps: 1000
+  
+  # Model validation
+  validation:
+    a_b_testing_prep: true
+    shadow_testing_prep: true
+    canary_deployment_prep: true
+  
+  # Documentation
+  documentation:
+    model_card: true
+    api_documentation: true
+    deployment_guide: true
+
+# Resource Monitoring During Training
+monitoring:
+  # System resources
+  system_monitoring:
+    cpu_usage: true
+    memory_usage: true
+    gpu_usage: true
+    disk_io: true
+    network_io: false
+  
+  # Training metrics
+  training_monitoring:
+    loss_tracking: true
+    metric_tracking: true
+    gradient_tracking: false
+    parameter_tracking: false
+  
+  # Alerts
+  alerts:
+    high_memory_usage: 0.9
+    low_gpu_utilization: 0.5
+    training_stalled: 300  # seconds
+    
+# Reproducibility
+reproducibility:
+  random_seed: 42
+  deterministic_training: true
+  benchmark_mode: false
+  
+  # Environment
+  python_version: "3.9"
+  pytorch_version: "1.12.0"
+  cuda_version: "11.3"
+  
+  # Data versioning
+  data_version_tracking: true
+  model_version_tracking: true
