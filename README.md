@@ -7,7 +7,7 @@
 
 A production-ready real-time vehicle safety monitoring system using YOLOv7 object detection, computer vision pipelines, and statistical analysis for crash prevention and risk assessment.
 
-## 🎯 Key Performance Metrics
+## Key Performance Metrics
 
 - **Real-time Object Detection**: YOLOv7 with mAP@0.5: 64.53%, Precision: 0.87, Recall: 0.82
 - **Dataset Scale**: 300K+ vehicles analyzed
@@ -16,74 +16,40 @@ A production-ready real-time vehicle safety monitoring system using YOLOv7 objec
 - **Production Performance**: <150ms inference time, 1000 predictions/sec throughput
 - **Impact**: 13.4K crash prevention potential, $122.9M+ projected savings
 
-## 🏗️ System Architecture
+## System Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    BRIDGESTONE VEHICLE SAFETY SYSTEM           │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    classDef src fill:#1d2a3a,stroke:#58a6ff,stroke-width:2px,color:#e6edf3
+    classDef proc fill:#1f2a23,stroke:#3fb950,stroke-width:2px,color:#e6edf3
+    classDef out fill:#2a2520,stroke:#c9a227,stroke-width:2px,color:#e6edf3
+    classDef cloud fill:#1a1a2e,stroke:#c084fc,stroke-width:2px,color:#e6edf3
 
-┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
-│   Data Sources   │    │  Processing Layer│    │   Output Layer   │
-│                  │    │                  │    │                  │
-│ • Traffic Cameras│───▶│ • YOLOv7 Model   │───▶│ • Risk Scores    │
-│ • Vehicle Sensors│    │ • Feature Extract│    │ • Crash Predict  │
-│ • Historical Data│    │ • Ensemble ML    │    │ • Safety Alerts  │
-│ • Weather APIs   │    │ • Survival Anal. │    │ • Dashboard      │
-└──────────────────┘    └──────────────────┘    └──────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    AWS CLOUD INFRASTRUCTURE                     │
-│                                                                 │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
-│  │   Lambda    │  │     S3      │  │   RDS/      │            │
-│  │ (Inference) │  │ (Storage)   │  │ DynamoDB    │            │
-│  └─────────────┘  └─────────────┘  └─────────────┘            │
-│                                                                 │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
-│  │  EC2/ECS    │  │ CloudWatch  │  │  API Gateway│            │
-│  │ (Training)  │  │(Monitoring) │  │             │            │
-│  └─────────────┘  └─────────────┘  └─────────────┘            │
-└─────────────────────────────────────────────────────────────────┘
+    S[Data Sources<br/>cameras · sensors · history · weather]:::src
+    P[Processing<br/>YOLOv7 · feature extract<br/>ensemble ML · survival]:::proc
+    O[Outputs<br/>risk · crash prediction<br/>alerts · dashboard]:::out
+    AWS[AWS Cloud<br/>Lambda inference · S3 · DynamoDB<br/>EC2 training · CloudWatch · API GW]:::cloud
+
+    S --> P --> O
+    O --> AWS
+
+    click P href "src" "Processing source"
+    click O href "deployment" "Deployment config"
 ```
 
 ### Component Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     CORE ML PIPELINE                           │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  Input: Video/Image Stream                                      │
-│            │                                                    │
-│            ▼                                                    │
-│  ┌─────────────────┐     ┌─────────────────┐                  │
-│  │  Preprocessing  │────▶│   YOLOv7 Model  │                  │
-│  │  • Resize       │     │  • Object Det.  │                  │
-│  │  • Normalize    │     │  • Confidence   │                  │
-│  │  • Augment      │     │  • Bounding Box │                  │
-│  └─────────────────┘     └─────────────────┘                  │
-│            │                       │                           │
-│            ▼                       ▼                           │
-│  ┌─────────────────┐     ┌─────────────────┐                  │
-│  │ Feature Extract │     │ Risk Assessment │                  │
-│  │ • CNN Features  │────▶│ • Ensemble ML   │                  │
-│  │ • Motion Vectors│     │ • Cox Regression│                  │
-│  │ • Edge Detection│     │ • Risk Scoring  │                  │
-│  └─────────────────┘     └─────────────────┘                  │
-│                                    │                           │
-│                                    ▼                           │
-│                         ┌─────────────────┐                   │
-│                         │ Output/Actions  │                   │
-│                         │ • Alerts        │                   │
-│                         │ • Predictions   │                   │
-│                         │ • Logging       │                   │
-│                         └─────────────────┘                   │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A[Input: Video / Image Stream] --> B[Preprocessing<br/>Resize, Normalize, Augment]
+    B --> C[YOLOv7 Model<br/>Object Detection, Confidence, BBox]
+    B --> D[Feature Extraction<br/>CNN Features, Motion, Edges]
+    C --> E[Risk Assessment<br/>Ensemble ML, Cox Regression, Risk Scoring]
+    D --> E
+    E --> F[Output / Actions<br/>Alerts, Predictions, Logging]
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 bridgestone-vehicle-safety/
@@ -148,7 +114,7 @@ bridgestone-vehicle-safety/
     └── run_inference.py
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -210,7 +176,7 @@ print(f"Risk Score: {results['risk_score']}")
 python scripts/run_inference.py --input data/videos/ --output results/ --batch_size 32
 ```
 
-## 🧠 Model Components
+## Model Components
 
 ### 1. YOLOv7 Object Detection
 - **Purpose**: Real-time vehicle and object detection
@@ -235,7 +201,7 @@ python scripts/run_inference.py --input data/videos/ --output results/ --batch_s
 - **Performance**: C-index: 0.78
 - **Prediction**: Time-to-crash probability
 
-## 📊 Performance Metrics
+## Performance Metrics
 
 ### Detection Performance
 | Metric | Value |
@@ -263,7 +229,7 @@ python scripts/run_inference.py --input data/videos/ --output results/ --batch_s
 | Memory Usage | <2GB |
 | CPU Usage | <70% |
 
-## 🛠️ Training
+## Training
 
 ### YOLOv7 Training
 ```bash
@@ -291,7 +257,7 @@ python training/train_survival.py \
     --output data/models/cox_model.pkl
 ```
 
-## 🌐 Deployment
+## Deployment
 
 ### Local Development
 ```bash
@@ -314,7 +280,7 @@ cd deployment/aws
 kubectl apply -f deployment/kubernetes/
 ```
 
-## 📈 Business Impact
+## Business Impact
 
 - **Crash Prevention**: 13,400 potential crashes prevented annually
 - **Cost Savings**: $122.9M+ projected savings
@@ -322,7 +288,7 @@ kubectl apply -f deployment/kubernetes/
 - **Real-time Capability**: Sub-150ms response time
 - **Scalability**: 1000+ concurrent predictions per second
 
-## 🔧 Configuration
+## Configuration
 
 ### Model Configuration (`config/model_config.yaml`)
 ```yaml
@@ -350,7 +316,7 @@ aws:
   api_gateway: "vehicle-safety-api"
 ```
 
-## 🧪 Testing
+## Testing
 
 ### Run All Tests
 ```bash
@@ -367,7 +333,7 @@ python tests/performance_test.py
 python tests/test_integration.py
 ```
 
-## 📚 API Documentation
+## API Documentation
 
 ### REST API Endpoints
 
@@ -410,7 +376,7 @@ Process single image/video for vehicle safety assessment
 }
 ```
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -418,18 +384,18 @@ Process single image/video for vehicle safety assessment
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 📞 Contact
+## Contact
 
 - **Project Lead**: [Your Name](mailto:your.email@company.com)
 - **Team**: Bridgestone AI/ML Engineering
 - **Documentation**: [Wiki](https://github.com/your-username/bridgestone-vehicle-safety/wiki)
 - **Issues**: [GitHub Issues](https://github.com/your-username/bridgestone-vehicle-safety/issues)
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - YOLOv7 team for the object detection framework
 - AWS for cloud infrastructure support
@@ -438,4 +404,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**⚠️ Note**: This system is designed for research and development purposes. For production deployment in safety-critical applications, additional validation and regulatory compliance may be required.
+** Note**: This system is designed for research and development purposes. For production deployment in safety-critical applications, additional validation and regulatory compliance may be required.
